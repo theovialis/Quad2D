@@ -21,22 +21,23 @@ class Quad2D_physics:
     
     Ajout de la trainée: pour l'instant ça empêche le décollage
     """
-    def __init__(self, Dt):        
+    def __init__(self, main, Dt):        
         self.debug = False
         
+        
+        self.main = main
         ## Simulation params     
         
         self.Dt = Dt
         self.DThrottle = 5        
         
-        self.XMax = 700 # zone de jeu (donc 7 m)
-        self.YMax = 900   
+        
         # Saturations
         self.Tmax = 1000 # 10 N = 1 kgf
         self.vMax = 500 # 5 m/s
         self.vLandMax = 30 # 0.3 m/s
         self.OMax = m.pi/2 # 45 deg/s
-        self.Yfloor = self.YMax-10
+        self.Yfloor = self.main.YMax-10
         
         ## Quad Physics
         self.l = 30 # 30 cm / bras de levier du quad
@@ -48,6 +49,13 @@ class Quad2D_physics:
         self.ltarget = 25
         self.htarget = 40              
         
+        ## Probing
+        self.size_limit = 1000
+
+        self.omega_container = []
+        self.theta_container = []
+        self.y_container = []
+        self.x_container = []
     
     def Initialize_Quad(self):    
         
@@ -80,9 +88,14 @@ class Quad2D_physics:
         """
         self.t += self.Dt
         
+        self.Tl = self.quantity_saturation(self.Tl, 0, self.Tmax)
+        self.Tr = self.quantity_saturation(self.Tr, 0, self.Tmax)
+        
         self.theta_resolution()
         self.X_resolution()
         self.Y_resolution()
+        
+        self.record_data(self.omega, self.omega_container)
         
                 
     def theta_resolution(self):
@@ -103,7 +116,15 @@ class Quad2D_physics:
         
         self.theta += self.omega*self.Dt
         
+    
+    def quantity_saturation(self, value, minValue, maxValue):
         
+        value = max(minValue, value)
+        value = min(value, maxValue)
+        
+        return value
+    
+    
     def sign(self,a):
         if a != 0:
             return a/(a**2)**.5
@@ -127,10 +148,10 @@ class Quad2D_physics:
         
         # bord latéraux cycliques
         
-        if self.x > self.XMax:
-            self.x -= self.XMax
+        if self.x > self.main.XMax:
+            self.x -= self.main.XMax
         elif self.x < 0 :
-            self.x += self.XMax
+            self.x += self.main.XMax
             
         
     def Y_resolution(self):
@@ -151,8 +172,8 @@ class Quad2D_physics:
     ### TARGET MANAGEMENT ++++++++++++++++++++++++++++++
     
     def Initialize_Target(self):
-        self.xtarget = random.randrange(self.ltarget, self.XMax-self.ltarget)
-        self.ytarget = random.randrange(self.htarget, self.YMax-self.htarget)
+        self.xtarget = random.randrange(self.ltarget, self.main.XMax-self.ltarget)
+        self.ytarget = random.randrange(self.htarget, self.main.YMax-self.htarget)
         
         self.target_reached = self.check_targetreach()
     
@@ -172,11 +193,20 @@ class Quad2D_physics:
         
         if Xcond1 and Xcond2 and Ycond1 and Ycond2 :
             print("++++TARGET REACHED++++")
+            self.main.score += 100
             return True
+            
         else:
             return False
         
     ### TARGET MANAGEMENT ------------------------
+    
+    ### Probing Management ++++++++++++++++++++++++++++++
 
+    def record_data(self, data, container):
+        
+        container.append(data)
+        if len(container) > self.size_limit:
+            container.pop(-1)
 
 #--------------------------------------------------------------------------------------------

@@ -59,8 +59,8 @@ class Quad2D_FlightController:
             elif key == "r" :
                 self.phys.Initialize_Quad()
                 
-            elif key == "d" :
-                self.plot_display()
+            # elif key == "d" :
+            #     self.plot_display()
                 
             elif key == "m":
                 self.mode_change()

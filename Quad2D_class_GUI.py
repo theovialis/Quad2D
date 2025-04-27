@@ -6,22 +6,25 @@ Created on Sun Apr 27 16:10:32 2025
 """
 import math as m
 import tkinter as tk
+import matplotlib.pyplot as plt
 from PIL import Image, ImageTk
 
 class Quad2D_GUI(tk.Tk):
     
-    def __init__(self, physics, flightController, hitbox = True):
+    def __init__(self, main, physics, flightController, hitbox = True):
         tk.Tk.__init__(self)
         
         self.hitbox = hitbox
         
         self.title("Quad2D Simulation / Théo Vialis")
         
+        self.main = main
+        
         self.phys = physics
         
         self.FC = flightController
         
-        self.Cv = tk.Canvas(self, width = self.phys.XMax, height = self.phys.YMax, background = "lightblue")
+        self.Cv = tk.Canvas(self, width = self.main.XMax, height = self.main.YMax, background = "lightblue")
         self.Cv.pack()        
                 
         self.background_setup()
@@ -29,7 +32,8 @@ class Quad2D_GUI(tk.Tk):
         self.target_setup()
         
         ## Mode Human
-        self.Cv.bind_all("<Key>", self.FC.ManControl_KP)     
+        self.Cv.bind_all("<Key>", self.FC.ManControl_KP)   
+        self.Cv.bind("p", self.plot_display) 
         self.Cv.bind_all("<KeyRelease>", self.FC.ManControl_KR)
 
     
@@ -44,15 +48,18 @@ class Quad2D_GUI(tk.Tk):
         self.sun = self.Cv.create_image(50,50,image = self.Sun_PI)
         self.clouds = self.Cv.create_image(400,250,image = self.Clouds_PI)
         
-        self.floor =  self.Cv.create_rectangle(-10, self.phys.YMax-5, self.phys.XMax+10, self.phys.YMax+10, fill ="brown")
+        self.floor =  self.Cv.create_rectangle(-10, self.main.YMax-5, self.main.XMax+10, self.main.YMax+10, fill ="brown")
         
-        self.Tl_display = self.Cv.create_text(200, 20, text= f"Tl : {self.phys.Tl:.1f}")
-        self.Tr_display = self.Cv.create_text(250, 20, text= f"Tr : {self.phys.Tr:.1f}")
-        self.omega_display = self.Cv.create_text(350, 20, text= f"Omega : {self.phys.omega:.1f}")
-        self.omegaT_display = self.Cv.create_text(450, 20, text= f"Omega_t : {self.FC.omega_target:.1f}")
-        self.theta_display = self.Cv.create_text(550, 20, text= f"theta : {self.phys.theta*180/m.pi:.1f}°")
+        self.Tl_display = self.Cv.create_text(150, 20, text= f"Tl : {self.phys.Tl:.1f}")
+        self.Tr_display = self.Cv.create_text(200, 20, text= f"Tr : {self.phys.Tr:.1f}")
+        self.omega_display = self.Cv.create_text(300, 20, text= f"Omega : {self.phys.omega:.1f}")
+        self.omegaT_display = self.Cv.create_text(375, 20, text= f"Omega_t : {self.FC.omega_target:.1f}")
+        self.theta_display = self.Cv.create_text(450, 20, text= f"theta : {self.phys.theta*180/m.pi:.1f}°")
         
-        # self.mode_display = self.Cv.
+        self.mode_display = self.Cv.create_text(self.main.XMax - 150, 20, text= f"Mode : {self.FC.MODES[self.FC.curr_mode]}")
+        
+        self.score_display = self.Cv.create_text(self.main.XMax - 50, 20, text= f"Score : {self.main.score}")
+        
     
     def target_setup(self):
         self.im_target = Image.open("./assets/red-plain-1.png").resize((self.phys.ltarget,self.phys.htarget))
@@ -66,6 +73,9 @@ class Quad2D_GUI(tk.Tk):
         self.Cv.itemconfig(self.omega_display, text= f"Omega : {self.phys.omega:.1f}")
         self.Cv.itemconfig(self.omegaT_display, text= f"Omega_t : {self.FC.omega_target:.1f}")
         self.Cv.itemconfig(self.theta_display, text= f"theta : {self.phys.theta*180/m.pi:.1f}°")
+        
+        
+        self.Cv.itemconfig(self.score_display, text= f"Score : {self.main.score}")
     
     def target_move(self):
         self.Cv.coords(self.target, self.phys.xtarget,self.phys.ytarget)
@@ -114,4 +124,12 @@ class Quad2D_GUI(tk.Tk):
            # self.phys.target_reached = False
         
         self.update()
+    
+    ### Probing Management -----------------------------    
+    def plot_display(self):
+        
+        plt.figure()
+        plt.plot(self.phys.omega_container, ".k")
+        plt.grid()
+        
     

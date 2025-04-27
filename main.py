@@ -11,7 +11,7 @@ inspiré de https://youtu.be/J1hv0MJghag?feature=shared / https://github.com/Ale
 
 import math as m
 import time
-import matplotlib.pyplot as plt
+
 import Quad2D_class_physics, Quad2D_class_FlightController, Quad2D_class_GUI
 
 #--------------------------------------------------------------------------------------------
@@ -30,50 +30,29 @@ class Quad2D_Main:
         self.RealTime = RealTime
         self.gui = GUI
                
+        self.XMax = 700 # zone de jeu (donc 7 m)
+        self.YMax = 900   
+        
+        
+        self.score = 0
         
         self.Dt = .05 ## Pas de temps physique de la simulation
         
-        self.phys = Quad2D_class_physics.Quad2D_physics(self.Dt)
+        self.phys = Quad2D_class_physics.Quad2D_physics(self, self.Dt)
         self.phys.Initialize_Quad()
 
         
         self.FC = Quad2D_class_FlightController.Quad2D_FlightController(self.phys)        
         
-        
-        self.size_limit = 1000
-        
-        self.omega_container = []
-        self.theta_container = []
-        self.y_container = []
-        self.x_container = []
-        
-        
-        
+              
         if self.gui:
-            self.GuiClass = Quad2D_class_GUI.Quad2D_GUI(self.phys, self.FC)
+            self.GuiClass = Quad2D_class_GUI.Quad2D_GUI(self, self.phys, self.FC)
 
         
+        
+
         self.timeloop()
         
-        
-    ### Probing Management ++++++++++++++++++++++++++++++
-
-    def record_data(self, data, container):
-        
-        container.append(data)
-        if len(container) > self.size_limit:
-            container.pop(-1)
-        
-    
-    def plot_display(self):
-        
-        plt.figure(1)
-        plt.plot(self.omega_container, ".k")
-        plt.grid()
-        
-    ### Probing Management -----------------------------    
-    
-    
     
     ### QUAD SITUATION DETECTION ---------------
     def crashDetection(self):
@@ -142,7 +121,7 @@ class Quad2D_Main:
             ### OUTPUT if collision => target moves to somewhere else
             
             ### 5. Probe/Record useful data for analysis
-            self.record_data(self.phys.omega, self.omega_container)
+            self.phys.record_data(self.phys.omega, self.phys.omega_container)
             ### OUTPUT : list filled with wanted data
             
             ### 6. Updating the GUI
