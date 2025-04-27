@@ -29,8 +29,8 @@ class Quad2D_GUI(tk.Tk):
         self.target_setup()
         
         ## Mode Human
-        self.GuiClass.Cv.bind_all("<Key>", self.FC.ManControl_KP)     
-        self.GuiClass.Cv.bind_all("<KeyRelease>", self.FC.ManControl_KR)
+        self.Cv.bind_all("<Key>", self.FC.ManControl_KP)     
+        self.Cv.bind_all("<KeyRelease>", self.FC.ManControl_KR)
 
     
     def background_setup(self):

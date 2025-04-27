@@ -71,7 +71,7 @@ class Quad2D_FlightController:
         key = e.keysym
         self.keypressed.remove(key)
         if key == "Left" or key == "Right":
-            self.phys.omega_target = 0
+            self.omega_target = 0
             
     
     def mode_change(self):
@@ -90,12 +90,11 @@ class Quad2D_FlightController:
             self.theta_target += sign * m.radians(self.Dtheta)
 
     
-    
-    
+        
     
     def rate_control(self):
-        self.phys.Tl += self.PID_rate.compute(self.phys.omega - self.phys.omega_target, self.Dt)
-        self.phys.Tr -= self.PID_rate.compute(self.phys.omega - self.phys.omega_target, self.Dt)
+        self.phys.Tl += self.PID_rate.compute(self.phys.omega - self.omega_target, self.phys.Dt)
+        self.phys.Tr -= self.PID_rate.compute(self.phys.omega - self.omega_target, self.phys.Dt)
 
 
 #--------------------------------------------------------------------------------------------

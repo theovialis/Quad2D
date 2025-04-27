@@ -10,7 +10,7 @@ inspiré de https://youtu.be/J1hv0MJghag?feature=shared / https://github.com/Ale
 """
 
 import math as m
-import time, random
+import time
 import matplotlib.pyplot as plt
 import Quad2D_class_physics, Quad2D_class_FlightController, Quad2D_class_GUI
 
@@ -25,28 +25,22 @@ class Quad2D_Main:
     Elle gère la cible à atteindre et les collisions
     """
     
-    def __init__(self, GUI = True):
+    def __init__(self, RealTime = True, GUI = True):
+        
+        self.RealTime = RealTime
         self.gui = GUI
+               
         
         self.Dt = .05 ## Pas de temps physique de la simulation
         
         self.phys = Quad2D_class_physics.Quad2D_physics(self.Dt)
         self.phys.Initialize_Quad()
+
         
-        self.ltarget = 25
-        self.htarget = 40       
-      
-        
-        self.Initialize_Target()
-        
-        self.FC = Quad2D_class_FlightController.Quad2D_FlightController(self.phys)
-        
+        self.FC = Quad2D_class_FlightController.Quad2D_FlightController(self.phys)        
         
         
         self.size_limit = 1000
-        
-        
-        
         
         self.omega_container = []
         self.theta_container = []
@@ -79,35 +73,7 @@ class Quad2D_Main:
         
     ### Probing Management -----------------------------    
     
-    ### TARGET MANAGEMENT ++++++++++++++++++++++++++++++
     
-    def Initialize_Target(self):
-        self.xtarget = random.randrange(self.ltarget, self.phys.XMax-self.ltarget)
-        self.ytarget = random.randrange(self.htarget, self.phys.XMax-self.htarget)
-        
-        self.target_reached = self.check_targetreach()
-    
-    def check_targetreach(self):
-        
-        self.x1_HB = self.phys.x - m.cos(self.phys.theta)*self.phys.l - m.sin(self.phys.theta)*self.phys.hquad/2
-        self.y1_HB = self.phys.y - m.sin(self.phys.theta)*self.phys.l - m.cos(self.phys.theta)*self.phys.hquad/2
-        self.x2_HB = self.phys.x + m.cos(self.phys.theta)*self.phys.l + m.sin(self.phys.theta)*self.phys.hquad/2
-        self.y2_HB = self.phys.y + m.sin(self.phys.theta)*self.phys.l + m.cos(self.phys.theta)*self.phys.hquad/2
-        
-        Xcond1 = self.x2_HB >= self.xtarget - self.ltarget/2
-        Xcond2 = self.x1_HB < self.xtarget + self.ltarget/2
-        
-        Ycond1 = self.y1_HB < self.ytarget + self.htarget/2
-        Ycond2 = self.y2_HB >= self.ytarget - self.htarget/2
-                    
-        
-        if Xcond1 and Xcond2 and Ycond1 and Ycond2 :
-            print("++++TARGET REACHED++++")
-            return True
-        else:
-            return False
-        
-    ### TARGET MANAGEMENT ------------------------
     
     ### QUAD SITUATION DETECTION ---------------
     def crashDetection(self):
@@ -129,7 +95,7 @@ class Quad2D_Main:
         if self.phys.y < 0 :
             print("---- FLYAWAY Detected ++++")
             return True
-        if self.FlyAway and self.phys.y > 0 :
+        if self.phys.FlyAway and self.phys.y > 0 :
             print("---- FLYBACK ---")
             return False
     
@@ -140,14 +106,14 @@ class Quad2D_Main:
             self.phys.omega = 0
             self.phys.y = self.phys.Yfloor
             
-            if self.Flying:                
-                self.Flying = False
-                self.Crashed = self.crashDetection()                
+            if self.phys.Flying:                
+                self.phys.Flying = False
+                self.phys.Crashed = self.crashDetection()                
  
                        
-        if (not self.Flying) and (self.phys.y < self.phys.Yfloor) and (self.Tl != 0 or self.Tr != 0):
+        if (not self.phys.Flying) and (self.phys.y < self.phys.Yfloor) and (self.phys.Tl != 0 or self.phys.Tr != 0):
             print("-- TAKEOFF --")
-            self.Flying = True 
+            self.phys.Flying = True 
     
     ### QUAD SITUATION DETECTION ---------------
 ## ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++    
@@ -166,13 +132,13 @@ class Quad2D_Main:
             
             ### 3. Quad situation check (optional)
             self.flyDetection()            
-            self.FlyAway = self.flyAwayDetection()
+            self.phys.FlyAway = self.flyAwayDetection()
             ### OUTPUT : warnings if quad is out of bands or crashed/landed
             
             ### 4. Chack collision with target
-            self.target_reached = self.check_targetreach()
+            self.target_reached = self.phys.check_targetreach()
             if self.target_reached:
-                self.Initialize_Target()
+                self.phys.Initialize_Target()
             ### OUTPUT if collision => target moves to somewhere else
             
             ### 5. Probe/Record useful data for analysis
@@ -180,12 +146,12 @@ class Quad2D_Main:
             ### OUTPUT : list filled with wanted data
             
             ### 6. Updating the GUI
-            if self.gui :
+            if self.gui and self.RealTime :
                 self.GuiClass.gui_update()
             ### OUTPUT : 
             
-        
-            time.sleep(self.Dt)
+            if self.RealTime:
+                time.sleep(self.Dt)
         ### --------- MAIN TIMELOOP ------------------
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++    
 

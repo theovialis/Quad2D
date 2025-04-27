@@ -6,6 +6,7 @@ Created on Sun Apr 27 16:09:43 2025
 """
 
 import math as m
+import random
 
 #--------------------------------------------------------------------------------------------
 class Quad2D_physics:
@@ -44,6 +45,8 @@ class Quad2D_physics:
         self.g = .5e3 # 5 m/s2 (au lieu de 9.81)
         self.Cx = .5 #coeff drag
         
+        self.ltarget = 25
+        self.htarget = 40              
         
     
     def Initialize_Quad(self):    
@@ -64,11 +67,11 @@ class Quad2D_physics:
         self.vx = 0
         self.vy = 0
             #Throttle left and right
-        self.Tl = 0
-        self.Tr = 0
-        
-        
-    
+        self.Tl = 250
+        self.Tr = 250       
+       
+        self.Initialize_Target() 
+       
     def timeIncrement(self):
         """
         Gestionnaire de l'évolution temporelle des trois variables (x,y,theta)
@@ -81,9 +84,7 @@ class Quad2D_physics:
         self.X_resolution()
         self.Y_resolution()
         
-        
-
-        
+                
     def theta_resolution(self):
         """
         l'angle du Quad est géré par l'équation du moment.
@@ -147,7 +148,35 @@ class Quad2D_physics:
         
         self.y += self.vy*self.Dt
 
-
+    ### TARGET MANAGEMENT ++++++++++++++++++++++++++++++
+    
+    def Initialize_Target(self):
+        self.xtarget = random.randrange(self.ltarget, self.XMax-self.ltarget)
+        self.ytarget = random.randrange(self.htarget, self.YMax-self.htarget)
+        
+        self.target_reached = self.check_targetreach()
+    
+    def check_targetreach(self):
+        
+        self.x1_HB = self.x - m.cos(self.theta)*self.l - m.sin(self.theta)*self.hquad/2
+        self.y1_HB = self.y - m.sin(self.theta)*self.l - m.cos(self.theta)*self.hquad/2
+        self.x2_HB = self.x + m.cos(self.theta)*self.l + m.sin(self.theta)*self.hquad/2
+        self.y2_HB = self.y + m.sin(self.theta)*self.l + m.cos(self.theta)*self.hquad/2
+        
+        Xcond1 = self.x2_HB >= self.xtarget - self.ltarget/2
+        Xcond2 = self.x1_HB < self.xtarget + self.ltarget/2
+        
+        Ycond1 = self.y1_HB < self.ytarget + self.htarget/2
+        Ycond2 = self.y2_HB >= self.ytarget - self.htarget/2
+                    
+        
+        if Xcond1 and Xcond2 and Ycond1 and Ycond2 :
+            print("++++TARGET REACHED++++")
+            return True
+        else:
+            return False
+        
+    ### TARGET MANAGEMENT ------------------------
 
 
 #--------------------------------------------------------------------------------------------
