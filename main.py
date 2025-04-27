@@ -13,10 +13,13 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import math as m
 import time, random
+import matplotlib.pyplot as plt
 
 #--------------------------------------------------------------------------------------------
 class Quad2D_Master:
-    
+    """
+    bon réglage pour PID_rate :  Quad2D_PID(G = 5, Ti = 700, Td = 1, output_limits=(-self.phys.Tmax,self.phys.Tmax))
+    """
     def __init__(self, GUI = True):
         self.gui = GUI
         
@@ -25,49 +28,90 @@ class Quad2D_Master:
         self.phys = Quad2D_physics(self.Dt)
         self.phys.Initialize_Quad()
         
+        self.PID_rate = Quad2D_PID(G = 5, Ti = 700, Td = 1, output_limits=(-self.phys.Tmax,self.phys.Tmax))
         
+        self.size_limit = 1000
+        
+        self.omega_container = []
+        
+        self.keypressed = set()
         self.MODE = "RATE"
         
         if self.gui:
             self.GuiClass = Quad2D_GUI(self.phys)
             ## Mode Human
-            self.GuiClass.Cv.bind_all("<Key>", self.ManControl)     
+            self.GuiClass.Cv.bind_all("<Key>", self.ManControl_KP)     
+            self.GuiClass.Cv.bind_all("<KeyRelease>", self.ManControl_KR)
 
         
         
         self.timeloop()
     
-    def ManControl(self,e):
+    def ManControl_KP(self,e):
         
         key = e.keysym
         
-        if key == "Right" and self.phys.theta >= -90:
-#            self.omega_target -= m.radians(10)
-            self.phys.Tl += self.phys.Dangle
-            self.phys.Tr -= self.phys.Dangle
-        elif key == "Left" and self.phys.theta <= 90:
-#            self.omega_target += m.radians(10)
-            self.phys.Tl -= self.phys.Dangle
-            self.phys.Tr += self.phys.Dangle        
-        elif key == "Up" :
-            if self.phys.Tl < self.phys.Tmax:
-                self.phys.Tl += self.phys.DThrottle
-            if self.phys.Tr < self.phys.Tmax:
-                self.phys.Tr += self.phys.DThrottle
-        elif key == "Down" :
-            if self.phys.Tl > 0:
-                self.phys.Tl -= self.phys.DThrottle
-            if self.phys.Tr > 0:
-                self.phys.Tr -= self.phys.DThrottle
-        elif key == "r" :
-            self.phys.Initialize_Quad()
-            
+        if key not in self.keypressed:
+            self.keypressed.add(key)
+            if key == "Right" and self.phys.theta >= -90:
+                self.phys.omega_target -= m.radians(10)
+
+            elif key == "Left" and self.phys.theta <= 90:
+                self.phys.omega_target += m.radians(10)
+       
+            elif key == "Up" :
+                if self.phys.Tl < self.phys.Tmax:
+                    self.phys.Tl += self.phys.DThrottle
+                if self.phys.Tr < self.phys.Tmax:
+                    self.phys.Tr += self.phys.DThrottle
+            elif key == "Down" :
+                if self.phys.Tl > 0:
+                    self.phys.Tl -= self.phys.DThrottle
+                if self.phys.Tr > 0:
+                    self.phys.Tr -= self.phys.DThrottle
+            elif key == "r" :
+                self.phys.Initialize_Quad()
+                
+            elif key == "d" :
+                self.plot_display()
+                
+                
+    def record_data(self, data, container):
+        
+        container.append(data)
+        if len(container) > self.size_limit:
+            container.pop(-1)
+        
     
+    def plot_display(self):
+        
+        plt.figure(1)
+        plt.plot(self.omega_container, ".k")
+        plt.grid()
+        
+        
+        
+    def ManControl_KR(self,e):
+        key = e.keysym
+        self.keypressed.remove(key)
+        if key == "Left" or key == "Right":
+            self.phys.omega_target = 0
+    
+    def rate_control(self):
+        self.phys.Tl += self.PID_rate.compute(self.phys.omega - self.phys.omega_target, self.Dt)
+        self.phys.Tr -= self.PID_rate.compute(self.phys.omega - self.phys.omega_target, self.Dt)
     
     def timeloop(self):
+        ### ------- MAIN TIMELOOP --------------------
         while True :
-
+            
+            
+            self.rate_control()
+            
+            
             self.phys.timeIncrement()
+            
+            self.record_data(self.phys.omega, self.omega_container)
             
             
             if self.gui :
@@ -75,15 +119,12 @@ class Quad2D_Master:
         
         
             time.sleep(self.Dt)
-        
+        ### --------- MAIN TIMELOOP ------------------
 
 #--------------------------------------------------------------------------------------------
-class Quad2D_ControlTools:
-    def __init__(self):
-        pass
-        
+class Quad2D_PID:
 
-    def PID_config(self, G=1.0, Ti=float('inf'), Td=0.0, output_limits=(None, None)):
+    def __init__(self, G=1.0, Ti=float('inf'), Td=0.0, output_limits=(None, None)):
         
         self.G = G
         self.Ti = Ti
@@ -94,7 +135,7 @@ class Quad2D_ControlTools:
         
         self.min_output, self.max_output = output_limits
     
-    def PID_compute(self, error, dt):
+    def compute(self, error, dt):
 
         P = self.G * error
 
@@ -139,8 +180,7 @@ class Quad2D_physics:
         ## Simulation params     
         
         self.Dt = Dt
-        self.DThrottle = 10
-        self.Dangle = 5
+        self.DThrottle = 5
         
         self.XMax = 700 # zone de jeu (donc 7 m)
         self.YMax = 900   
@@ -162,6 +202,8 @@ class Quad2D_physics:
         self.ltarget = 25
         self.htarget = 40
         
+        
+        self.omega_target = 0       
         
         
         
@@ -188,8 +230,8 @@ class Quad2D_physics:
         self.vx = 0
         self.vy = 0
             #Throttle left and right
-        self.Tl = 0
-        self.Tr = 0
+        self.Tl = 250
+        self.Tr = 250
         
         self.Initialize_Target()
     
@@ -293,8 +335,7 @@ class Quad2D_physics:
             if self.Flying:                
                 self.Flying = False
                 self.Crashed = self.crashDetection()                
-#                self.Tl = 0
-#                self.Tr = 0
+ 
                        
         if (not self.Flying) and (self.y < self.Yfloor) and (self.Tl != 0 or self.Tr != 0):
             print("-- TAKEOFF --")
@@ -378,13 +419,24 @@ class Quad2D_GUI(tk.Tk):
         
         self.floor =  self.Cv.create_rectangle(-10, self.phys.YMax-5, self.phys.XMax+10, self.phys.YMax+10, fill ="brown")
         
+        self.Tl_display = self.Cv.create_text(200, 20, text= f"Tl : {self.phys.Tl:.1f}")
+        self.Tr_display = self.Cv.create_text(250, 20, text= f"Tr : {self.phys.Tr:.1f}")
+        self.omega_display = self.Cv.create_text(350, 20, text= f"Omega : {self.phys.omega:.1f}")
+        self.omegaT_display = self.Cv.create_text(450, 20, text= f"Omega_t : {self.phys.omega_target:.1f}")
+        self.theta_display = self.Cv.create_text(550, 20, text= f"theta : {self.phys.theta*180/m.pi:.1f}°")
     
     def target_setup(self):
         self.im_target = Image.open("./assets/red-plain-1.png").resize((self.phys.ltarget,self.phys.htarget))
         self.Target_PI = ImageTk.PhotoImage(self.im_target)
         
         self.target = self.Cv.create_image(self.phys.xtarget,self.phys.ytarget,image = self.Target_PI)
-        
+    
+    def text_update(self):
+        self.Cv.itemconfig(self.Tl_display, text= f"Tl : {self.phys.Tl:.1f}")
+        self.Cv.itemconfig(self.Tr_display, text= f"Tr : {self.phys.Tr:.1f}")
+        self.Cv.itemconfig(self.omega_display, text= f"Omega : {self.phys.omega:.1f}")
+        self.Cv.itemconfig(self.omegaT_display, text= f"Omega_t : {self.phys.omega_target:.1f}")
+        self.Cv.itemconfig(self.theta_display, text= f"theta : {self.phys.theta*180/m.pi:.1f}°")
     
     def target_move(self):
         self.Cv.coords(self.target, self.phys.xtarget,self.phys.ytarget)
@@ -425,6 +477,7 @@ class Quad2D_GUI(tk.Tk):
         
         self.quad_move()
         
+        self.text_update()
         #if self.phys.target_reached :
         self.target_move()
         if self.hitbox:
