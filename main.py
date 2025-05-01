@@ -47,6 +47,7 @@ class Quad2D_Main:
               
         if self.gui:
             self.GuiClass = Quad2D_class_GUI.Quad2D_GUI(self, self.phys, self.FC)
+            self.GUI_mode = self.FC.curr_mode
 
         
         
@@ -100,10 +101,17 @@ class Quad2D_Main:
         ### ------- MAIN TIMELOOP --------------------
         while True :
             
-            ## 1. Control calculation
-            self.FC.rate_control()
+            ## 1. Control calculation : high level first
+                ### A.PID Cascade
+            if self.FC.curr_mode > 1:
+                self.FC.altitude_control() 
+                
+            if self.FC.curr_mode > 0:
+                self.FC.angle_control() 
             
+            self.FC.rate_control()            
             ### OUTPUT : modif of Tl & Tr in physics
+            
             
             ## 2. Physics calculation
             self.phys.timeIncrement()            
@@ -114,7 +122,7 @@ class Quad2D_Main:
             self.phys.FlyAway = self.flyAwayDetection()
             ### OUTPUT : warnings if quad is out of bands or crashed/landed
             
-            ### 4. Chack collision with target
+            ### 4. Check collision with target
             self.target_reached = self.phys.check_targetreach()
             if self.target_reached:
                 self.phys.Initialize_Target()
@@ -126,8 +134,12 @@ class Quad2D_Main:
             
             ### 6. Updating the GUI
             if self.gui and self.RealTime :
+                if self.FC.curr_mode != self.GUI_mode:
+                    self.GuiClass.update_mode()
+                    self.GUI_mode = self.FC.curr_mode
+                
                 self.GuiClass.gui_update()
-            ### OUTPUT : 
+            ### OUTPUT : MaJ visuelle de l'interface
             
             if self.RealTime:
                 time.sleep(self.Dt)

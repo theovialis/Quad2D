@@ -24,14 +24,19 @@ class Quad2D_FlightController:
         
         self.keypressed = set()
         
-        self.MODES = ["RATE", "STABILIZE", "ALTHOLD", "AUTO"]
+        self.MODES = ["ACRO", "STABILIZE", "ALTHOLD", "AUTO"]
         self.curr_mode = 0
                 
         self.PID_rate = Quad2D_PID(G = 5, Ti = 700, Td = 1, output_limits=(-self.phys.Tmax,self.phys.Tmax))
+        self.PID_angle = Quad2D_PID(G = 5, Ti = 700, Td = 1, output_limits=(-self.phys.OMax,self.phys.OMax))
+        self.PID_alt = Quad2D_PID(G = 5, Ti = 700, Td = 1, output_limits=(-self.phys.Tmax,self.phys.Tmax))
         
         self.omega_target = 0 
         self.Domega = 10  # deg/s
         self.Dtheta = 5
+        self.Dy = 10 #cm/pxl
+        
+        self.theta_target_max = 20 #deg
 
 
 
@@ -47,15 +52,11 @@ class Quad2D_FlightController:
                 self.LeftRight_input(1)
        
             elif key == "Up" :
-                if self.phys.Tl < self.phys.Tmax:
-                    self.phys.Tl += self.phys.DThrottle
-                if self.phys.Tr < self.phys.Tmax:
-                    self.phys.Tr += self.phys.DThrottle
+                self.UpDown_input(1)
+                
             elif key == "Down" :
-                if self.phys.Tl > 0:
-                    self.phys.Tl -= self.phys.DThrottle
-                if self.phys.Tr > 0:
-                    self.phys.Tr -= self.phys.DThrottle
+                self.UpDown_input(-1)
+                
             elif key == "r" :
                 self.phys.Initialize_Quad()
                 
@@ -71,11 +72,13 @@ class Quad2D_FlightController:
         key = e.keysym
         self.keypressed.remove(key)
         if key == "Left" or key == "Right":
-            self.omega_target = 0
+            self.LeftRight_release()
             
     
     def mode_change(self):
-        self.curr_mode = (self.curr_mode + 1) % 2
+        self.curr_mode = (self.curr_mode + 1) % 3
+        self.theta_target = 0
+        self.y_target = self.phys.y
         print(f"++ Changing mode to {self.MODES[self.curr_mode]} ++")
     
     def LeftRight_input(self, sign):
@@ -89,12 +92,56 @@ class Quad2D_FlightController:
         elif self.curr_mode == 1:
             self.theta_target += sign * m.radians(self.Dtheta)
 
-    
+    def LeftRight_release(self):
+        """
+        Methode qui converti les inputs release de l'utilisateur en cible pour la quantité qui dépend du mode
+        """
         
+        if self.curr_mode == 0:
+            self.omega_target = 0
+            
+        elif self.curr_mode == 1:
+            self.theta_target = 0
+    
+     
+    def UpDown_input(self, sign):
+        if self.curr_mode < 2:
+            if self.phys.Tl > 0 and self.phys.Tl < self.phys.Tmax :
+                
+                self.phys.Tl += sign*self.phys.DThrottle
+                
+            if self.phys.Tr > 0 and self.phys.Tr < self.phys.Tmax:
+                
+                self.phys.Tr += sign*self.phys.DThrottle
+                
+        if self.curr_mode == 2:
+            self.y_target -= sign*self.Dy
+    
     
     def rate_control(self):
+        """
+        Entrée : Vitesse angulaire voulue (omega target)
+        Sortie : poussée des moteurs   (Tr et Tl)     Signes opposés pour une accélération angulaire
+        """
+
         self.phys.Tl += self.PID_rate.compute(self.phys.omega - self.omega_target, self.phys.Dt)
         self.phys.Tr -= self.PID_rate.compute(self.phys.omega - self.omega_target, self.phys.Dt)
+        
+    def angle_control(self):
+        """
+        Entrée : Angle voulu (theta target)
+        Sortie : Vitesse angulaire voule (omega target)     
+        """
+        self.omega_target -= self.PID_angle.compute(self.phys.theta - self.theta_target, self.phys.Dt)
+        
+    def altitude_control(self):
+        """
+        Entrée : Altitude voulue (y) (y dirigé vers le bas)
+        Sortie : poussée des moteurs (Tr et Tl)     Même signe pour variation d'altitude
+        """
+        self.phys.Tl += self.PID_alt.compute(self.phys.y - self.y_target, self.phys.Dt)
+        self.phys.Tr += self.PID_alt.compute(self.phys.y - self.y_target, self.phys.Dt)
+        
 
 
 #--------------------------------------------------------------------------------------------

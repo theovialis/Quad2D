@@ -77,6 +77,9 @@ class Quad2D_GUI(tk.Tk):
         
         self.Cv.itemconfig(self.score_display, text= f"Score : {self.main.score}")
     
+    def update_mode(self):
+        self.Cv.itemconfig(self.mode_display, text= f"Mode : {self.FC.MODES[self.FC.curr_mode]}")
+    
     def target_move(self):
         self.Cv.coords(self.target, self.phys.xtarget,self.phys.ytarget)
     
